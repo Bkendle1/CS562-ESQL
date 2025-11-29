@@ -68,10 +68,43 @@ def main():
     phi["sigma"] = sigma.split(", ") # initialize with an empty list for each grouping variable
     phi["G"] = G 
     
+    # print(f"S: {S}\nn: {n}\nV: {V}\nF: {F}\nsigma: {sigma}\nG: {G}")
 
+    # TODO generate the code to create the H table
+    # mf_struct must have a column for each grouping attribute and aggregate
+    mf_struct = """
+    mf_struct = {
+    """
+    # populate mf_struct with grouping attributes
+    for attr in phi.get("V"):
+        mf_struct += f"\t'{attr}' : [],\n"
+    # populate mf_struct with aggregate functions
+    for agg in F:
+        if agg != []:
+            mf_struct += f"\t\t'{agg}': 0,\n"
+    mf_struct += "\t}" # close mf_struct
+    
+    # print the mf_struct
+    debug = f"""
+    # convert all integer attributes to strings for tabulate
+    for key in mf_struct.keys():
+        if (isinstance(mf_struct.get(key), list)):
+            continue
+        mf_struct[key] = str(mf_struct.get(key))
+    print(tabulate.tabulate(mf_struct, headers="keys", tablefmt="psql"))
+    """
+
+    # TODO generate the code that implements the evaluation algorithm
+
+    # body = """
+    # for row in cur:
+    #     if row['quant'] > 10:
+    #         _global.append(row)
+    # """
+    
     body = """
     for row in cur:
-        if row['quant'] > 10:
+        if row['cust'] == "Wally" and row['quant'] == 193:
             _global.append(row)
     """
 
@@ -99,8 +132,11 @@ def query():
     cur.execute("SELECT * FROM sales") # prints all the rows in the data table
     
     _global = []
+    {mf_struct}
+    num_rows = 1 # keeps track of how many rows the mf_struct has
     {body}
     
+    {debug}
     return tabulate.tabulate(_global,
                         headers="keys", tablefmt="psql") # returns data as a table
 
@@ -111,11 +147,11 @@ if "__main__" == __name__:
     main()
     """
     
-    # COMMENTED OUT FOR TESTING PURPOSES
     # Write the generated code to a file
-    # open("_generated.py", "w").write(tmp)
+    open("_generated.py", "w").write(tmp)
+    # COMMENTED OUT FOR TESTING PURPOSES
     # Execute the generated code
-    # subprocess.run(["python", "_generated.py"])
+    subprocess.run(["python", "_generated.py"])
 
 
 if "__main__" == __name__:

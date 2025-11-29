@@ -21,10 +21,28 @@ def query():
     
     _global = []
     
+    mf_struct = {
+    	'cust' : [],
+		'1_sum_quant': 0,
+		'1_avg_quant': 0,
+		'2_sum_quant': 0,
+		'3_sum_quant': 0,
+		'3_avg_quant': 0,
+	}
+    num_rows = 0 # keeps track of how many rows the mf_struct has
+    
     for row in cur:
-        if row['quant'] > 10:
+        if row['cust'] == "Wally" and row['quant'] == 193:
             _global.append(row)
     
+    
+    
+    # convert all integer attributes to strings for tabulate
+    for key in mf_struct.keys():
+        if (isinstance(mf_struct.get(key), list)):
+            continue
+        mf_struct[key] = str(mf_struct.get(key))
+    print(tabulate.tabulate(mf_struct, headers="keys", tablefmt="psql"))
     
     return tabulate.tabulate(_global,
                         headers="keys", tablefmt="psql") # returns data as a table
