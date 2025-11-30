@@ -72,69 +72,71 @@ def main():
 
     # TODO generate the code to create the H table
     # mf_struct must have a column for each grouping attribute and aggregate
+
     mf_struct = """
     mf_struct = {
+        
+    }
     """
-    # populate mf_struct with grouping attributes
-    for attr in phi.get("V"):
-        mf_struct += f"\t'{attr}' : [],\n"
-    # populate mf_struct with aggregate functions
-    for agg in F:
-        if agg != []:
-            mf_struct += f"\t\t'{agg}': [],\n"
-    mf_struct += "\t}" # close mf_struct
     
-    mf_struct = """mf_struct = {
-    	'cust' : ["Sam", "Dan", "Adora", "Catra"],
-		'1_sum_quant': [96, 68, 26, 86],
-		'1_avg_quant': [22, 57, 50, 99],
-		'2_sum_quant': [10, 1, 94, 33],
-		'3_sum_quant': [55, 54, 78, 56],
-		'3_avg_quant': [10, 34, 56, 76],
-	}
-    """
-    # print the mf_struct
-    debug = f"""
-    print(tabulate.tabulate(mf_struct, headers="keys", tablefmt="psql")) # DEBUG
-    """
 
-    # TODO generate the code that implements the evaluation algorithm
-
-    # peform n + 1 scans
-    # scan 0 adds rows with distinct grouping attributes as well as computes any aggregates for the groups defined by the grouping attributes
+    # Define helper functions
+    # Checks whether attribute values in a given row exist within a row in mf_struct
     lookup = """
-def lookup(cur: dict, struct: dict, size: int, attrs: list) -> int: 
+def lookup(cur: dict, struct: dict, attrs: list) -> int: 
     \"""
     Search for a given "group by" attribute value(s) in mf_struct. 
     If the value(s) doesn't exist then return -1, else return the index for that row.
 
-    :param cur: Current row in the mf_struct
-    :param struct: The mf_struct
-    :param size: Number of rows in the mf_struct
+    :param cur: Current row in the mf_struct.
+    :param struct: The mf_struct.
+    :param attrs: List of the grouping attributes that make up the key in the mf_struct.
     :return: Either the index of the matching row in mf_struct or -1 if not found.
     \"""
-    # iterate through each row in mf_struct
-    for i in range(size):
-        # iterate through each grouping attribute
-        for attr in attrs:
-            # print(f"Cur: {cur[attr]} | MF-Struct: {struct.get(attr)[i]}")
-            # mf_struct has the attribute value 
-            if struct.get(attr)[i] == cur[attr]:
-                continue # check next attribute
-            return -1 # mf_struct doesn't have the grouping attribute values in the given row 
-    return i # mf_struct has all grouping attribute values in the given row
-"""
-    
-    # body = """
-    # # for idx, (key, val) in enumerate(mf_struct.items()):
-    # #     print(f"Index: {idx} | Key: {key} | Value: {val}")
-    # """
-    
-    body = """
-    for row in cur:
-        lookup(row, mf_struct, len(mf_struct["cust"]), ["cust"])
-    """
 
+    key = () # compute key using row's grouping attribute values
+    for attr in attrs:
+        key += (cur[attr],)
+    if key in struct.keys():
+        return True
+    return False
+
+"""
+    # adds a new row in mf_struct
+    add = f"""
+def add(cur: dict, struct: dict, attrs: list, aggs: list):
+    \"""
+    Adds new row to mf_struct.
+
+    :param cur: Current row from base table.
+    :param struct: The mf_struct the new row goes to.
+    :param attrs: List of attributes whose values from cur will get added to the new row
+    :param aggs: List of aggregates for each grouping variable
+    \"""
+    key = () # compute key using row's grouping attribute values
+    for attr in attrs:
+        key += (cur[attr],)
+    value = dict()
+    for agg in aggs:
+        value[agg] = 0
+    struct[key] = value
+"""
+
+    # print the mf_struct
+    # output = "print(tabulate.tabulate(mf_struct, headers=\"keys\", tablefmt=\"psql\"))"
+
+    
+    # TODO generate the code that implements the evaluation algorithm
+    # perform n + 1 scans
+    # scan 0 adds rows with distinct grouping attributes as well as computes any aggregates for the groups defined by the grouping attributes
+
+    body = f"""
+    for row in cur:
+        lookup(row, mf_struct, {phi["V"]})
+        add(row, mf_struct, {phi["V"]}, {F})
+        # exit()
+    """
+    
     # body = """
     # for row in cur:
     #     if row['quant'] > 10:
@@ -156,6 +158,7 @@ from dotenv import load_dotenv
 
 # Helper functions
 {lookup}
+{add}
 
 def query():
     load_dotenv() # reads the .env file
@@ -174,7 +177,6 @@ def query():
     num_rows = 1 # keeps track of how many rows the mf_struct has
     {body}
     
-    {debug}
     return tabulate.tabulate(_global,
                         headers="keys", tablefmt="psql") # returns data as a table
 
