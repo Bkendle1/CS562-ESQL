@@ -149,8 +149,8 @@ def output(struct: dict, attrs: list):
         # a key is a tuple so we iterate through each key and map them with their corresponding attribute name
         for key, attr in zip(keys, attrs):
             d[attr] = key
-    d.update(struct.get(keys)) # combine the entry's dictionary with the dictionary associated to that entry's value
-    ret.append(d) # add it to the list of rows  
+        d.update(struct.get(keys)) # combine the entry's dictionary with the dictionary associated to that entry's value
+        ret.append(d) # add it to the list of rows  
     print(tabulate.tabulate(ret, headers=\"keys\", tablefmt=\"psql\")) # print the final table
     """
     
@@ -162,10 +162,9 @@ def output(struct: dict, attrs: list):
     for row in cur:
     #     lookup(row, mf_struct, {phi["V"]})
         add(row, mf_struct, {phi["V"]}, {F})
-        break
+        # break
 
     output(mf_struct, {phi["V"]})
-    # print(mf_struct)
     """
     
     # body = """

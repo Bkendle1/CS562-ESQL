@@ -68,16 +68,16 @@ def output(struct: dict, attrs: list):
     :param attrs: List of grouping attributes names.
     """
     
-
     ret = [] # stores rows of mf_struct
+    # iterate through each entry of mf_struct
     for keys in struct.keys():
-        d = {}
+        d = {} # initialize a new dictionary that'll stores the row corresponding to the current entry 
+        # a key is a tuple so we iterate through each key and map them with their corresponding attribute name
         for key, attr in zip(keys, attrs):
             d[attr] = key
-    # combine dictionary of keys with the keys' dictionary 
-    d.update(struct.get(keys))
-    ret.append(d)    
-    print(tabulate.tabulate(ret, headers="keys", tablefmt="psql"))
+        d.update(struct.get(keys)) # combine the entry's dictionary with the dictionary associated to that entry's value
+        ret.append(d) # add it to the list of rows  
+    print(tabulate.tabulate(ret, headers="keys", tablefmt="psql")) # print the final table
     
 
 def query():
@@ -103,10 +103,9 @@ def query():
     for row in cur:
     #     lookup(row, mf_struct, ['cust', 'prod'])
         add(row, mf_struct, ['cust', 'prod'], ['1_sum_quant', '1_avg_quant', '2_sum_quant', '3_sum_quant', '3_avg_quant'])
-        break
+        # break
 
     output(mf_struct, ['cust', 'prod'])
-    # print(mf_struct)
     
 
     
