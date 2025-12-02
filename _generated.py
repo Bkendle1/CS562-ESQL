@@ -43,6 +43,15 @@ def add(cur: dict, struct: dict, attrs: list, aggs: list):
         key += (cur[attr],)
     value = dict()
     for agg in aggs:
+        # initialize min aggregate with None
+        if "min" in agg:
+            value[agg] = None
+            continue
+        # to compute average, we need to track the number of values used
+        elif "avg" in agg:
+            value[agg] = (0, 1)
+            continue
+            
         value[agg] = 0
     struct[key] = value
 
@@ -75,7 +84,14 @@ def output(struct: dict, attrs: list):
         # a key is a tuple so we iterate through each key and map them with their corresponding attribute name
         for key, attr in zip(keys, attrs):
             d[attr] = key
-        d.update(struct.get(keys)) # combine the entry's dictionary with the dictionary associated to that entry's value
+        
+        aggs = struct.get(keys) # get the aggregates for the current entry
+        # iterate through each of the current entry's aggregates
+        for key, val in aggs.items():
+            # extract the average from the tuple stored in the avg aggregates
+            if "avg" in key:
+                aggs[key] = val[0] # return the average
+        d.update(aggs) # combine the entry's dictionary with the dictionary of aggregates associated to that entry's value
         ret.append(d) # add it to the list of rows  
     print(tabulate.tabulate(ret, headers="keys", tablefmt="psql")) # print the final table
     
@@ -91,13 +107,14 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
     :param cond: Condition that define the grouping variable's range
     """
     # print(f"Pred: {preds}, Aggs: {aggs}, Attrs: {attrs}")
+    key = () # create key with the given grouping attributes
+    for attr in attrs:
+        key += (row[attr],)
+    # print(key)
 
-    # TEST
-    row["state"]="NY"
-    row["quant"] = 100
-    print(f"Condition: {cond}")
+    # check if grouping variable condition is satisfied
     if eval(cond):
-        print("Success!")
+        # iterate through all relevant aggregates
         for agg in aggs:
             (var, op, att) = agg.split("_")
             match op:
@@ -106,20 +123,21 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
                 case 'count':
                     struct[key][agg] += 1
                 case 'max':
-                    struct[key][agg] = max(struct[key], row[att])
+                    struct[key][agg] = max(struct[key][agg], row[att])
                 case 'min':
-                    struct[key][agg] = min(struct[key], row[att])
+                    # if current value is none then initialize aggregate with the row's value
+                    if struct[key][agg] == None:
+                        struct[key][agg] = row[att]
+                    else:
+                        struct[key][agg] = min(struct[key][agg], row[att])
                 case 'avg':
-                    struct[key][agg] = 0
-        exit()
-    else:
-        print("Failure")
-        exit()
-        
-
-    # iterate through mf_struct to identify rows that satisfy grouping variable's range w.r.t the given row
-    # entry = struct.get(key)
-    
+                    # compute average using incremental average formula (avg = cur_avg + (val - cur_avg) / # of vals)
+                    (cur_avg, cnt) = struct[key][agg] # extract current average and the current count of numbers that make up the average 
+                    new_avg = cur_avg + ((row[att] - cur_avg) / cnt + 1)
+                    struct[key][agg] = (new_avg, cnt + 1)
+    # else:
+    #     print("Irrelevant to grouping variable")
+            
     
 def query():
     load_dotenv() # reads the .env file
@@ -143,13 +161,13 @@ def query():
             if i == 0:
                 exists = lookup(row, mf_struct, ['cust', 'prod'])
                 if not exists:
-                    add(row, mf_struct, ['cust', 'prod'], ['0_sum_quant', '1_sum_quant', '1_avg_quant', '2_sum_quant', '3_sum_quant', '3_avg_quant'])
-                update(row, mf_struct, ['cust', 'prod'], [['0_sum_quant'], ['1_sum_quant', '1_avg_quant'], ['2_sum_quant'], ['3_sum_quant', '3_avg_quant']][i], "True") # update the rows in mf_struct corresponding to i=0 (aggregates over the standard SQL groups)
+                    add(row, mf_struct, ['cust', 'prod'], ['0_sum_quant', '1_sum_quant', '1_avg_quant', '2_sum_quant', '3_sum_quant', '3_max_quant', '3_min_quant'])
+                update(row, mf_struct, ['cust', 'prod'], [['0_sum_quant'], ['1_sum_quant', '1_avg_quant'], ['2_sum_quant'], ['3_sum_quant', '3_max_quant', '3_min_quant']][i], "True") # update the rows in mf_struct corresponding to i=0 (aggregates over the standard SQL groups)
             else:
-                update(row, mf_struct, ['cust', 'prod'], [['0_sum_quant'], ['1_sum_quant', '1_avg_quant'], ['2_sum_quant'], ['3_sum_quant', '3_avg_quant']][i], ["row['state']=='NY' and row['quant']<=100 ", "row['state']=='NJ'", "row['state']=='CT'"][i-1]) # update the rows in mf_struct corresponding to i!=0 (aggregates over the grouping variables)             
+                update(row, mf_struct, ['cust', 'prod'], [['0_sum_quant'], ['1_sum_quant', '1_avg_quant'], ['2_sum_quant'], ['3_sum_quant', '3_max_quant', '3_min_quant']][i], ["row['state']=='NY' and row['quant']<=100 ", "row['state']=='NJ'", "row['state']=='CT'"][i-1]) # update the rows in mf_struct corresponding to i!=0 (aggregates over the grouping variables)             
 
     output(mf_struct, ['cust', 'prod'])
-    print(f"Entries: {len(mf_struct.keys())}")
+    print(f"Total Rows: {len(mf_struct.keys())}")
 
     
 
