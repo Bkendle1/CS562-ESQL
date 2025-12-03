@@ -50,13 +50,19 @@ def main():
             sigma = sigma.split(": ")[-1]
 
             G = file.readline().strip()
-            G = G.split(": ")[-1]
+            G = G.split(": ")
+            if len(G) < 2:
+                G = ""
+            else:
+                G = G[-1]
+
     else:
         print("Error: Too many arguments")
         exit()
     
     # print(f"S: {S}\nn: {n}\nV: {V}\nF: {F}\nsigma: {sigma}\nG: {G}")
-    
+
+
     phi["S"] = S.split(", ")
     phi["n"] = n
     phi["V"] = V.split(", ")
@@ -213,7 +219,6 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
     # TODO generate the code that implements the evaluation algorithm
     # perform n + 1 scans
     
-    # print(phi["sigma"])
     conds = [] # stores the conditions from the transformed predicates
     # convert each predicate into a condition for an if-block
     for pred in phi["sigma"]:
@@ -223,9 +228,13 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
         pred = re.sub(r"([^<|>])=", r"\1==", pred) 
         # print(f"Pred: {pred}")
         conds.append(pred)    
+
+    # Convert HAVING clause predicate into an if condition
+    pred_g = re.sub(r"(\d+_\w*)", r"value['\1']", phi["G"]) # encompass attributes with value[] where row is the value (dictionary) for the corresponding key  
+    pred_g = re.sub(r"([^<|>])=", r"\1==", pred_g) # replace all occurrences of '=' with "==" \1 refers to capture group 1 (i.e. [^<|>])
+    print(pred_g)
+    # exit()
     
-    # for cond in conds:
-    #     print(cond)    
 
     body = f"""
     table = cur.fetchall() # store the SQL query output into a list so that it can be scanned multiple times
@@ -240,10 +249,24 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
             else:
                 update(row, mf_struct, {phi["V"]}, {phi["F"]}[i], {conds}[i-1]) # update the rows in mf_struct corresponding to i!=0 (aggregates over the grouping variables)             
 
-    output(mf_struct, {phi["V"]})
+    output(mf_struct, {phi["V"]}) # check mf_struct output
     print(f"Total Rows: {{len(mf_struct.keys())}}")
 
+    # Apply predicate from HAVING clause
+    # Iterate through rows of mf_struct
+    for key, value in mf_struct.items():
+        # Check if current row satisfies G
+        if ({pred_g}):
+            d = {{}} # create a new dictionary
+            # add grouping attribute name with their corresponding value to dictionary
+            for name, key in zip({phi["V"]}, key):
+                d.update({{name : key}})
+            d.update(value) # combine with dictionary of aggregates
+            _global.append(d) # add to final list of rows
+
+    print(f"Total Rows: {{len(_global)}}")
     """
+    
     
     # body = """
     # for row in cur:
@@ -285,7 +308,6 @@ def query():
     {mf_struct}
     {body}
 
-    
     return tabulate.tabulate(_global,
                         headers="keys", tablefmt="psql") # returns data as a table
 
@@ -298,7 +320,6 @@ if "__main__" == __name__:
     
     # Write the generated code to a file
     open("_generated.py", "w").write(tmp)
-    # COMMENTED OUT FOR TESTING PURPOSES
     # Execute the generated code
     subprocess.run(["python", "_generated.py"])
 
