@@ -134,9 +134,9 @@ def add(cur: dict, struct: dict, attrs: list, aggs: list):
 """
     
     output = """
-def output(struct: dict, attrs: list):
+def output(struct: dict, attrs: list, projs: list):
     \"""
-    Print the rows of a given mf_struct.
+    Print the projected attributes of a given mf_struct, i.e. outputs specific columns of mf_struct.
     mf_struct's keys are the grouping attribute values themselves. Thus, we convert the keys into a dictionary where the key is the attribute's name (in attrs) and the value is the attribute's value (i.e. mf_struct key). Since the mf_struct's values are dictionaries that store the aggregates, we can combine the two dictionaries to produce a row of the mf_struct consisting of the grouping attributes and the aggregates.
 
     Example:\n
@@ -150,9 +150,10 @@ def output(struct: dict, attrs: list):
 
     :param struct: The mf_struct we want to print.
     :param attrs: List of grouping attributes names.
+    :param projs: List of projected attributes specified from SELECT
     \"""
     
-    ret = [] # stores rows of mf_struct
+    table = [] # stores rows of mf_struct
     # iterate through each entry of mf_struct
     for keys in struct.keys():
         d = {} # initialize a new dictionary that'll stores the row corresponding to the current entry 
@@ -167,8 +168,16 @@ def output(struct: dict, attrs: list):
             if "avg" in key:
                 aggs[key] = val[0] # return the average
         d.update(aggs) # combine the entry's dictionary with the dictionary of aggregates associated to that entry's value
-        ret.append(d) # add it to the list of rows  
-    print(tabulate.tabulate(ret, headers=\"keys\", tablefmt=\"psql\")) # print the final table
+        proj_d = {}
+        for key, value in d.items():
+            if key in projs:
+                proj_d[key] = value
+        
+        table.append(proj_d) # add it to the list of rows 
+    
+    print(f"Total Rows: {len(table)}")
+    print(tabulate.tabulate(table, headers=\"keys\", tablefmt=\"psql\")) # print the final table
+
     """
 
     
@@ -183,10 +192,19 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
     :param aggs: Aggregates that are being computed for the grouping variable
     :param cond: Condition that define the grouping variable's range
     \"""
-    # print(f"Pred: {preds}, Aggs: {aggs}, Attrs: {attrs}")
     key = () # create key with the given grouping attributes
     for attr in attrs:
         key += (row[attr],)
+
+    # row['quant'] < 1_avg_quant    
+    # row['quant'] < struct[key]["1_avg_quant"]
+    # average aggregates are stored as tuples so we have to extract the actual average when checking for teh condition
+    if "avg" in cond:
+        cond = re.sub(r"(\d+\_\w+\_*)", fr"struct[{key}]['\\1'][0]", cond)
+    else:
+        cond = re.sub(r"(\d+\_\w+\_*)", fr"struct[{key}]['\\1']", cond)
+    # there may be a problem with min aggregates since we initialize them with None 
+
 
     # check if grouping variable condition is satisfied
     if eval(cond):
@@ -222,11 +240,12 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
     # convert each predicate into a condition for an if-block
     for pred in phi["sigma"]:
         # x.state="NY" -> row["state"] == "NY"
-        pred = re.sub(r"\d+\.(\w*)", r"row['\1']", pred) # encompass attribute with row[] where row is the variable for the current row  
+        pred = re.sub(r"\d+\.(\w*)", r"row['\1']", pred) # encompass attribute with row[] where row is the variable for the current row
+        
         # replace all occurrences of '=' with "==" \1 refers to capture group 1 (i.e. [^<|>])
         pred = re.sub(r"([^<|>])=", r"\1==", pred) 
         # print(f"Pred: {pred}")
-        conds.append(pred)    
+        conds.append(pred)  
 
     # Convert HAVING clause predicate into an if condition
     pred_g = re.sub(r"(\d+_\w*)", r"value['\1']", phi["G"]) # encompass attributes with value[] where row is the value (dictionary) for the corresponding key  
@@ -247,26 +266,30 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
             else:
                 update(row, mf_struct, {phi["V"]}, {phi["F"]}[i], {conds}[i-1]) # update the rows in mf_struct corresponding to i!=0 (aggregates over the grouping variables)             
 
-    print(f"Total Rows: {{len(mf_struct.keys())}}")
-    output(mf_struct, {phi["V"]}) # check mf_struct output
+    
+    output(mf_struct, {phi["V"]}, {phi["S"]}) # check mf_struct output
     
     # Check if there's a predicate in G
-    if ({len(phi["G"])} == 0):
-        exit()
+    if ({len(phi["G"])} != 0):
+        # Apply predicate from HAVING clause
+        # Iterate through rows of mf_struct
+        for key, value in mf_struct.items():
+            # Check if current row satisfies G
+            if ({pred_g}):
+                d = {{}} # create a new dictionary
+                # add grouping attribute name with their corresponding value to dictionary
+                for name, key in zip({phi["V"]}, key):
+                    d.update({{name : key}})
+                d.update(value) # combine with dictionary of aggregates
+                # only return projected attributes
+                proj_d = {{}}
+                for key, value in d.items():
+                    if key in {phi["S"]}:
+                        proj_d[key] = value
+                _global.append(proj_d) # add to final list of rows
+            
+        print(f"Total Rows: {{len(_global)}}")
 
-    # Apply predicate from HAVING clause
-    # Iterate through rows of mf_struct
-    for key, value in mf_struct.items():
-        # Check if current row satisfies G
-        if ({pred_g}):
-            d = {{}} # create a new dictionary
-            # add grouping attribute name with their corresponding value to dictionary
-            for name, key in zip({phi["V"]}, key):
-                d.update({{name : key}})
-            d.update(value) # combine with dictionary of aggregates
-            _global.append(d) # add to final list of rows
-
-    print(f"Total Rows: {{len(_global)}}")
     """
     
     # body = """
@@ -285,7 +308,7 @@ import psycopg2
 import psycopg2.extras
 import tabulate
 from dotenv import load_dotenv
-
+import re
 # DO NOT EDIT THIS FILE, IT IS GENERATED BY generator.py
 
 # Helper functions
