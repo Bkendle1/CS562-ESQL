@@ -1,0 +1,5 @@
+select cust, sum(1.quant), sum(2.quant), sum(3.quant)
+from sales
+group by cust; 1, 2, 3
+such that 1.state='NY' and 2.state='NJ' and 3.state='CT'
+having sum(1.quant) > 2*sum(2.quant) or avg(1.quant) > avg(3.quant)

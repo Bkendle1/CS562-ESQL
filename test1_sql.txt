@@ -1,0 +1,17 @@
+with pa_tb as 
+(
+	select cust, prod, sum(quant) as pa_sum
+	from sales
+	where state = 'PA' and quant >= 200
+	group by cust, prod
+),
+ct_tb as 
+(
+	select cust, prod, sum(quant) as ct_sum
+	from sales
+	where state = 'CT' and quant <= 200
+	group by cust, prod
+)
+select cust, prod, sum(quant), pa_sum, ct_sum
+from sales natural join pa_tb natural join ct_tb
+group by cust, prod, pa_sum, ct_sum

@@ -172,36 +172,36 @@ def query():
     mf_struct = {}
     
     table = cur.fetchall() # store the SQL query output into a list so that it can be scanned multiple times
-    for i in range(6):
+    for i in range(4):
         for row in table:
             # scan 0 adds rows with distinct grouping attributes 
             if i == 0:
-                exists = lookup(row, mf_struct, ['state', 'month'])
+                exists = lookup(row, mf_struct, ['cust', 'prod'])
                 if not exists:
-                    add(row, mf_struct, ['state', 'month'], ['0_avg_quant', '0_sum_quant', '0_count_quant', '1_avg_quant', '1_sum_quant', '1_count_quant', '2_avg_quant', '2_min_quant', '2_count_quant', '3_avg_quant', '3_sum_quant', '3_max_quant', '3_count_quant', '4_avg_quant', '4_max_quant', '4_min_quant', '4_count_quant', '5_avg_quant', '5_sum_quant', '5_count_quant'])
-                update(row, mf_struct, ['state', 'month'], [['0_avg_quant', '0_sum_quant', '0_count_quant'], ['1_avg_quant', '1_sum_quant', '1_count_quant'], ['2_avg_quant', '2_min_quant', '2_count_quant'], ['3_avg_quant', '3_sum_quant', '3_max_quant', '3_count_quant'], ['4_avg_quant', '4_max_quant', '4_min_quant', '4_count_quant'], ['5_avg_quant', '5_sum_quant', '5_count_quant']][i], "True") # update the rows in mf_struct corresponding to i=0 (aggregates over the standard SQL groups)
+                    add(row, mf_struct, ['cust', 'prod'], ['0_sum_quant', '1_sum_quant', '1_avg_quant', '2_sum_quant', '3_avg_quant', '3_sum_quant'])
+                update(row, mf_struct, ['cust', 'prod'], [['0_sum_quant'], ['1_sum_quant', '1_avg_quant'], ['2_sum_quant'], ['3_avg_quant', '3_sum_quant']][i], "True") # update the rows in mf_struct corresponding to i=0 (aggregates over the standard SQL groups)
             else:
-                update(row, mf_struct, ['state', 'month'], [['0_avg_quant', '0_sum_quant', '0_count_quant'], ['1_avg_quant', '1_sum_quant', '1_count_quant'], ['2_avg_quant', '2_min_quant', '2_count_quant'], ['3_avg_quant', '3_sum_quant', '3_max_quant', '3_count_quant'], ['4_avg_quant', '4_max_quant', '4_min_quant', '4_count_quant'], ['5_avg_quant', '5_sum_quant', '5_count_quant']][i], ["row['prod']=='Dates'", "row['prod']=='Fish'", "row['prod']=='Eggs'", "row['prod']=='Cherry'", "row['prod']=='Apple'"][i-1]) # update the rows in mf_struct corresponding to i!=0 (aggregates over the grouping variables)             
+                update(row, mf_struct, ['cust', 'prod'], [['0_sum_quant'], ['1_sum_quant', '1_avg_quant'], ['2_sum_quant'], ['3_avg_quant', '3_sum_quant']][i], ["row['state']=='NY' and row['quant']<=100", "row['state']=='NJ'", "row['state']=='CT'"][i-1]) # update the rows in mf_struct corresponding to i!=0 (aggregates over the grouping variables)             
 
     
-    output(mf_struct, ['state', 'month'], ['state', 'month', '0_count_quant', '1_count_quant', '2_count_quant', '3_count_quant', '4_count_quant', '5_count_quant']) # check mf_struct output
+    output(mf_struct, ['cust', 'prod'], ['cust', 'prod', '0_sum_quant', '1_sum_quant', '2_sum_quant', '3_sum_quant']) # check mf_struct output
     
     # Check if there's a predicate in G
-    if (170 != 0):
+    if (0 != 0):
         # Apply predicate from HAVING clause
         # Iterate through rows of mf_struct
         for key, value in mf_struct.items():
             # Check if current row satisfies G
-            if (value['1_sum_quant'] < value['0_sum_quant'] or value['0_avg_quant'] < value['2_avg_quant'] or value['5_avg_quant'] > value['0_avg_quant'] or value['3_max_quant'] == value['4_max_quant'] or value['3_sum_quant'] < value['5_sum_quant'] or value['4_min_quant'] > value['2_min_quant']):
+            if ():
                 d = {} # create a new dictionary
                 # add grouping attribute name with their corresponding value to dictionary
-                for name, key in zip(['state', 'month'], key):
+                for name, key in zip(['cust', 'prod'], key):
                     d.update({name : key})
                 d.update(value) # combine with dictionary of aggregates
                 # only return projected attributes
                 proj_d = {}
                 for key, value in d.items():
-                    if key in ['state', 'month', '0_count_quant', '1_count_quant', '2_count_quant', '3_count_quant', '4_count_quant', '5_count_quant']:
+                    if key in ['cust', 'prod', '0_sum_quant', '1_sum_quant', '2_sum_quant', '3_sum_quant']:
                         proj_d[key] = value
                 _global.append(proj_d) # add to final list of rows
             
@@ -212,14 +212,14 @@ def query():
     # Pull out unSELECTed aggregates
     for key1, dict in mf_struct.items():
         for key2 in list(dict.keys()):
-            if key2 not in ['state', 'month', '0_count_quant', '1_count_quant', '2_count_quant', '3_count_quant', '4_count_quant', '5_count_quant']:
+            if key2 not in ['cust', 'prod', '0_sum_quant', '1_sum_quant', '2_sum_quant', '3_sum_quant']:
                 del dict[key2]
 
     # Put all final entries into return data
     for key, value in mf_struct.items():
         d = {} # create a new dictionary
         # add grouping attribute name with their corresponding value to dictionary
-        for name, key in zip(['state', 'month'], key):
+        for name, key in zip(['cust', 'prod'], key):
             d.update({name : key})
         d.update(value) # combine with dictionary of aggregates
         _global.append(d) # add to final list of rows

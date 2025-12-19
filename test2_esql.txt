@@ -1,0 +1,4 @@
+select cust, prod, sum(quant), sum(1.quant), sum(2.quant), sum(3.quant)
+from sales
+group by cust, prod; 1, 2, 3
+such that 1.state='NY' and 1.quant<=100 and 2.state='NJ' and 3.state='CT'

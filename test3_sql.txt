@@ -1,0 +1,25 @@
+with ny_tb as 
+(
+	select cust, sum(quant) as ny_sum, avg(quant) as ny_avg
+	from sales
+	where state = 'NY'
+	group by cust
+),
+nj_tb as 
+(
+	select cust, sum(quant) as nj_sum
+	from sales
+	where state = 'NJ'
+	group by cust
+),
+ct_tb as 
+(
+	select cust, sum(quant) as ct_sum, avg(quant) as ct_avg
+	from sales
+	where state = 'CT'
+	group by cust
+)
+select cust, ny_sum, nj_sum, ct_sum
+from sales natural join ny_tb natural join nj_tb natural join ct_tb
+where ny_sum > 2*nj_sum or ny_avg > ct_avg
+group by cust, ny_sum, nj_sum, ct_sum
