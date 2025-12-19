@@ -187,26 +187,37 @@ def query():
     output(mf_struct, ['cust', 'prod'], ['cust', 'prod', '0_sum_quant', '1_sum_quant']) # check mf_struct output
     
     # Check if there's a predicate in G
-    if (16 != 0):
-        # Apply predicate from HAVING clause
-        # Iterate through rows of mf_struct
-        for key, value in mf_struct.items():
-            # Check if current row satisfies G
-            if (value['2_min_quant'] > 30):
-                d = {} # create a new dictionary
-                # add grouping attribute name with their corresponding value to dictionary
-                for name, key in zip(['cust', 'prod'], key):
-                    d.update({name : key})
-                d.update(value) # combine with dictionary of aggregates
-                # only return projected attributes
-                proj_d = {}
-                for key, value in d.items():
-                    if key in ['cust', 'prod', '0_sum_quant', '1_sum_quant']:
-                        proj_d[key] = value
-                _global.append(proj_d) # add to final list of rows
-            
-        print(f"Total Rows: {len(_global)}")
+    if (0 == 0):
+        exit()
 
+    # Apply predicate from HAVING clause
+    # Iterate through rows of mf_struct
+    for key, value in list(mf_struct.items()):
+        # Check if current row satisfies G
+        if ():
+            d = {} # create a new dictionary
+            # add grouping attribute name with their corresponding value to dictionary
+            for name, key in zip(['cust', 'prod'], key):
+                d.update({name : key})
+            d.update(value) # combine with dictionary of aggregates
+            _global.append(d) # add to final list of rows
+
+    print(f"Total Rows: {len(_global)}")
+
+    # Pull out unSELECTed aggregates
+    for key1, dict in mf_struct.items():
+        for key2 in list(dict.keys()):
+            if key2 not in ['cust', '0_sum_quant', '1_sum_quant', '2_sum_quant', '3_sum_quant']:
+                del dict[key2]
+
+    # Put all final entries into return data
+    for key, value in mf_struct.items():
+        d = {} # create a new dictionary
+        # add grouping attribute name with their corresponding value to dictionary
+        for name, key in zip(['cust', 'prod'], key):
+            d.update({name : key})
+        d.update(value) # combine with dictionary of aggregates
+        _global.append(d) # add to final list of rows
     
 
     return tabulate.tabulate(_global,
