@@ -1,0 +1,5 @@
+select cust, prod, sum(quant), sum(1.quant), sum(2.quant)
+from sales
+group by cust, prod; 1, 2
+such that 1.state = "PA" and 1.year = 2016 and 2.state="CT" and 2.year = 2020
+having sum(2.quant) > sum(1.quant)

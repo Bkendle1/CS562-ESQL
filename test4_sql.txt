@@ -1,0 +1,18 @@
+with early_tb as 
+(
+	select prod, state, avg(quant) as early_avg
+	from sales
+	where month < 12
+	group by prod, state
+),
+late_tb as 
+(
+	select prod, state, avg(quant) as late_avg
+	from sales
+	where month > 1
+	group by prod, state
+)
+select prod, state, avg(quant), early_avg, late_avg
+from sales natural join early_tb natural join late_tb
+group by prod, state, early_avg, late_avg
+having early_avg < avg(quant) and avg(quant) < late_avg

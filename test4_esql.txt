@@ -1,0 +1,5 @@
+select prod, state, avg(quant), avg(1.quant), avg(2.quant)
+from sales
+group by prod, state; 1, 2
+such that 1.month < 12 and 2.month > 1
+having avg(1.quant) < avg(quant) and avg(quant) < avg(2.quant)

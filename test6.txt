@@ -1,0 +1,8 @@
+SELECT ATTRIBUTE(S): state, month, 0_count_quant, 1_count_quant, 2_count_quant, 3_count_quant, 4_count_quant, 5_count_quant
+NUMBER OF GROUPING VARIABLES(n): 5
+GROUPING ATTRIBUTES (V): state, month
+F-VECT([F]): 0_avg_quant, 0_sum_quant, 0_count_quant, 1_avg_quant, 1_sum_quant, 1_count_quant, 2_avg_quant, 2_min_quant, 2_count_quant, 3_avg_quant, 3_sum_quant, 3_max_quant, 3_count_quant, 4_avg_quant, 4_max_quant, 4_min_quant, 4_count_quant, 5_avg_quant, 5_sum_quant, 5_count_quant
+SELECT CONDITION-VECT([σ]): 1.prod='Dates', 2.prod='Fish', 3.prod='Eggs', 4.prod='Cherry', 5.prod='Apple'
+HAVING_CONDITION(G): 1_sum_quant < 0_sum_quant or 0_avg_quant < 2_avg_quant or 5_avg_quant > 0_avg_quant or 3_max_quant = 4_max_quant or 3_sum_quant < 5_sum_quant or 4_min_quant > 2_min_quant
+
+// Extra example, no accompanying SQL query (it would be so horrible)

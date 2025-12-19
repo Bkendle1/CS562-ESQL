@@ -125,7 +125,7 @@ def add(cur: dict, struct: dict, attrs: list, aggs: list):
             continue
         # to compute average, we need to track the number of values used
         elif "avg" in agg:
-            value[agg] = (0, 1)
+            value[agg] = (0, 0)
             continue
             
         value[agg] = 0
@@ -209,7 +209,7 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
                 case 'avg':
                     # compute average using incremental average formula (avg = cur_avg + (val - cur_avg) / # of vals)
                     (cur_avg, cnt) = struct[key][agg] # extract current average and the current count of numbers that make up the average 
-                    new_avg = cur_avg + ((row[att] - cur_avg) / cnt + 1)
+                    new_avg = cur_avg + ((row[att] - cur_avg) / (cnt + 1))
                     struct[key][agg] = (new_avg, cnt + 1)
     # else:
     #     print("Irrelevant to grouping variable")
@@ -247,29 +247,28 @@ def update(row: dict, struct: dict, attrs: list, aggs: list, cond: str):
             else:
                 update(row, mf_struct, {phi["V"]}, {phi["F"]}[i], {conds}[i-1]) # update the rows in mf_struct corresponding to i!=0 (aggregates over the grouping variables)             
 
-    print(f"Total Rows: {{len(mf_struct.keys())}}")
+    print(f"Total Rows (pre-HAVING): {{len(mf_struct.keys())}}")
     output(mf_struct, {phi["V"]}) # check mf_struct output
     
     # Check if there's a predicate in G
-    if ({len(phi["G"])} == 0):
-        exit()
+    if ({len(phi["G"])} != 0):
+        # exit()
+        # Apply predicate from HAVING clause
+        # Iterate through rows of mf_struct
+        for key, value in list(mf_struct.items()):
+            # Check if current row satisfies G
+            if ({pred_g}):
+                continue
+                # d = {{}} # create a new dictionary
+                # # add grouping attribute name with their corresponding value to dictionary
+                # for name, key in zip({phi["V"]}, key):
+                #     d.update({{name : key}})
+                # d.update(value) # combine with dictionary of aggregates
+                # _global.append(d) # add to final list of rows
+            else:
+                del mf_struct[key]
 
-    # Apply predicate from HAVING clause
-    # Iterate through rows of mf_struct
-    for key, value in list(mf_struct.items()):
-        # Check if current row satisfies G
-        if ({pred_g}):
-            continue
-            # d = {{}} # create a new dictionary
-            # # add grouping attribute name with their corresponding value to dictionary
-            # for name, key in zip({phi["V"]}, key):
-            #     d.update({{name : key}})
-            # d.update(value) # combine with dictionary of aggregates
-            # _global.append(d) # add to final list of rows
-        else:
-            del mf_struct[key]
-
-    print(f"Total Rows: {{len(_global)}}")
+    print(f"Total Rows (post-HAVING): {{len(mf_struct.keys())}}")
 
     # Pull out unSELECTed aggregates
     for key1, dict in mf_struct.items():
