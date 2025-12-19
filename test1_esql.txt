@@ -1,0 +1,4 @@
+select cust, prod, sum(quant), sum(1.quant), sum(2.quant)
+from sales
+group by cust, prod; 1, 2
+such that 1.state='PA' and 1.quant>=200 and 2.state='CT' and 2.quant<=200

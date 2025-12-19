@@ -1,0 +1,8 @@
+SELECT ATTRIBUTE(S): prod, month, avg_quant, ny_avg_quant, nj_avg_quant
+NUMBER OF GROUPING VARIABLES(n): 2
+GROUPING ATTRIBUTES (V): cust, prod
+F-VECT([F]): avg_quant, ny_avg_quant, nj_avg_quant
+SELECT CONDITION-VECT([σ]): 0.month > 1, 0.month < 12, 1.month=0.month-1, 2.month=0.month+1
+HAVING_CONDITION(G): ny_avg_quant < avg_quant and avg_quant < nj_avg_quant
+
+// Example of bad input (and strict formatting)
